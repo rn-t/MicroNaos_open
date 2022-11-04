@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name "PTVS3V3P1UP_115")(type "Legacy")(uri "${KIPRJMOD}/footprintlib/PTVS3V3P1UP_115.mod")(options "")(descr ""))
+  (lib (name "Micromouse")(type "KiCad")(uri "${KIPRJMOD}/lib/MicroNaos")(options "")(descr ""))
+)

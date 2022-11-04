@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "name": "STM32F405xx",
+            "includePath": [
+                "${workspaceFolder}/firmware/**",
+                "/opt/gcc-arm-none-eabi/arm-none-eabi/include/**"
+            ],
+            "defines": [
+                "USE_HAL_DRIVER",
+                "STM32F405xx",
+                "__weak=__attribute__((weak))"
+            ],
+            "compilerPath": "/opt/gcc-arm-none-eabi/bin/arm-none-eabi-g++",
+            "intelliSenseMode": "linux-gcc-arm",
+            "cStandard": "gnu17",
+            "cppStandard": "gnu++14",
+            "configurationProvider": "ms-vscode.makefile-tools"
+        }
+    ],
+    "version": 4
+}

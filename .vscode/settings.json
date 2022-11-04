@@ -1,0 +1,17 @@
+{
+    "files.associations": {
+        "limits": "cpp",
+        "*.tcc": "cpp",
+        "cstdio": "cpp",
+        "string": "cpp"
+    },
+    "cortex-debug.variableUseNaturalFormat": true,
+    "makefile.makeDirectory": "/home/hitomosi/MicroNaos/firmware",
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "/home/hitomosi/MicroNaos/firmware/build",
+            "binaryPath": "/home/hitomosi/MicroNaos/firmware/build/MicroNaos.elf",
+            "binaryArgs": []
+        }
+    ]
+}

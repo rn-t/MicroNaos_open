@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "process",
+			"label": "Make:build",
+			"command": "make",
+			"args": [
+				"-C ${workspaceFolder}/firmware"
+			],
+			"group": "build",
+			"problemMatcher": [],
+			"detail": "Make build task"
+		}
+	]
+}

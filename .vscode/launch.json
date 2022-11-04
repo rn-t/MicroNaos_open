@@ -1,0 +1,17 @@
+{
+    "configurations": [
+    {
+        "name": "Debug with JLink",
+        "cwd": "${workspaceFolder}/firmware",
+        "executable": "${workspaceFolder}/firmware/build/MicroNaos.elf",
+        "request": "launch",
+        "type": "cortex-debug",
+        "armToolchainPath": "/opt/gcc-arm-none-eabi/bin",
+        "servertype": "jlink",
+        "serverpath": "/usr/bin/JLinkGDBServer",
+        "ipAddress": "172.18.160.1",
+        "device": "STM32F405RG",
+        "interface": "swd",
+    }
+    ]
+}

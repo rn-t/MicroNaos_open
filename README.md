@@ -1,8 +1,11 @@
 # MicroNaos_open
 マイクロマウスというロボット競技の、クラシックマウス部門用のロボットです。
 
+<img src=https://user-images.githubusercontent.com/48354170/200001577-363b2204-1d9d-4d47-936f-57a51cea68ca.jpg width=500px>
+
 ## ディレクトリ
 ### DXF
+
 基板外形のDXFファイルです
 
 ### firmware

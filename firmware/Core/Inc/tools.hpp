@@ -2,9 +2,10 @@
 #define INC_TOOLS_HPP_
 
 #include "main.h"
+#include "mazelibrary.hpp"
 
 namespace tools{
-    uint8_t get_rotated_wall(uint8_t);
+    uint8_t get_rotated_wall(uint8_t direction, uint8_t wall);
 }
 
 #endif

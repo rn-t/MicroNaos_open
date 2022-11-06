@@ -51,7 +51,8 @@ $(wildcard Core/Src/*.c)
 # CPP sources
 CPP_SOURCES = \
 $(wildcard Core/Src/*.cpp) \
-$(wildcard Core/Peripherals/Src/*.cpp)
+$(wildcard Core/Peripherals/Src/*.cpp) \
+$(filter-out lib/MazeLibrary/Src/simulator.cpp, $(wildcard lib/MazeLibrary/Src/*.cpp))
 
 # ASM sources
 ASM_SOURCES =  \
@@ -97,7 +98,8 @@ AS_DEFS =
 C_DEFS =  \
 -DUSE_HAL_DRIVER \
 -DSTM32F405xx \
--DARM_MATH_CM4
+-DARM_MATH_CM4 \
+-DUSE_ARM_GCC
 
 
 # AS includes
@@ -115,6 +117,7 @@ C_INCLUDES =  \
 -Ilib/SEGGER_RTT_V764b/RTT \
 -Ilib/SEGGER_RTT_V764b/Config \
 -Ilib/SEGGER_RTT_V764b/Syscalls \
+-Ilib/MazeLibrary/Inc \
 -IDrivers/STM32F4xx_HAL_Driver/Inc \
 -IDrivers/STM32F4xx_HAL_Driver/Inc/Legacy \
 -IMiddlewares/ST/STM32_USB_Device_Library/Core/Inc \

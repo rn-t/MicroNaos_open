@@ -12,6 +12,7 @@
 #include "maze.hpp"
 #include "SEGGER_RTT.h"
 #include "arm_math.h"
+#include "mazelibrary.hpp"
 
 #include <stdio.h>
 
@@ -43,17 +44,18 @@ namespace sw{
 static volatile float32_t gyro_z_e_i = 0.0f;
 
 static Maze maze;
+static Mouse mouse;
 
-static uint8_t mouse_enable = 0;
+static uint8_t usbmouse_enable = 0;
 
-struct Mouse {
+struct USBMouse {
 	uint8_t button;
 	int8_t x;
 	int8_t y;
 	int8_t w;
 };
 
-static struct Mouse mouse;
+static struct USBMouse usbmouse;
 
 extern USBD_HandleTypeDef hUsbDeviceFS;
 
@@ -200,14 +202,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 		}else{
 			sw::l = 0;
 		}
-		if(mouse_enable == 1){
+		if(usbmouse_enable == 1){
 
-			mouse.button = 0;
-			mouse.x = 0;
-			mouse.y = 0;
+			usbmouse.button = 0;
+			usbmouse.x = 0;
+			usbmouse.y = 0;
 
-			if (sw::r == 1) mouse.button = mouse.button | 0b00000010;
-			if (sw::l == 1) mouse.button = mouse.button | 0b00000001;
+			if (sw::r == 1) usbmouse.button = usbmouse.button | 0b00000010;
+			if (sw::l == 1) usbmouse.button = usbmouse.button | 0b00000001;
 
 			mouse.x = -1 * (gyro.read_accel_x() / 16) / 5;
 			mouse.y = (gyro.read_accel_y() / 16) / 5;
@@ -265,12 +267,12 @@ void true_main(void){
 	if(sw::r == 1){
 		led::set(0, 0, 1);
 		
-		mouse.button = 0;
+		usbmouse.button = 0;
 		
-		mouse.x = 0;
-		mouse.y = 0;
-		mouse.w = 0;
-		mouse_enable = 1;
+		usbmouse.x = 0;
+		usbmouse.y = 0;
+		usbmouse.w = 0;
+		usbmouse_enable = 1;
 
 		motor.enable(0);
 
@@ -296,114 +298,17 @@ void true_main(void){
 		HAL_Delay(2000);
 		led::set(0, 0, 0);
 		
-		maze.coord.x = 0;
-		maze.coord.y = 0;
-		maze.coord.muki = 1;
+		mouse.x = 0;
+		mouse.y = 0;
+		mouse.direction = Direction::up;
 		
 		motor.kabeate1();
 		if(ir::front_left.wall_detect() || ir::front_right.wall_detect()){
-			maze.wall_update(maze.coord, 0, 0, 0, 1);
+			maze.wall_update(mouse.x, mouse.y, 0);
 		}
 		motor.kabeate2();
 		if(ir::front_left.wall_detect() || ir::front_right.wall_detect()){
-			maze.wall_update(maze.coord, 1, 0, 0, 0);
-		}
-
-		while(1){
-			//状態判定と回転
-			if(maze.is_wall_left() 
-				&& maze.is_wall_up() == false
-				&& maze.is_wall_right() == false)
-			{
-				maze.wall_update(maze.coord, 0, 0, 0, 2);
-			}
-
-			if(maze.is_wall_left() == false 
-				&& (maze.is_wall_up()
-				|| maze.is_wall_right()))
-			{
-				if(maze.is_wall_up()
-				&& maze.is_wall_right() == false)
-				{
-					maze.wall_update(maze.coord, 0, 0, 0, 2);
-				}
-				else if(maze.is_wall_up() == false
-				&& maze.is_wall_right())
-				{
-					maze.wall_update(maze.coord, 2, 0, 0, 0);
-				}
-				motor.turn(90.0f);
-				maze.coord.muki++;
-				if (maze.coord.muki == 4){
-					maze.coord.muki = 0;
-				}
-			}
-			else if(maze.is_wall_left() 
-				&& maze.is_wall_up()
-				&& maze.is_wall_right() == false)
-			{
-				motor.turn(-90.0f);
-				maze.coord.muki--;
-				if (maze.coord.muki == -1){
-					maze.coord.muki = 3;
-				}
-			}
-			else if(maze.is_wall_left() 
-				&& maze.is_wall_up()
-				&& maze.is_wall_right())
-			{
-				motor.turn(180.0f);
-
-				maze.coord.muki += 2;
-				if(maze.coord.muki > 3){
-					maze.coord.muki -= 4;
-				}
-				
-				
-			}
-			if(!(maze.coord.x == 0 && maze.coord.y == 0)){
-				if(maze.is_wall_left2() && maze.is_wall_down2())
-				{
-					motor.kabeate1();
-					motor.kabeate2();
-				}else if(maze.is_wall_right2() && maze.is_wall_down2()){
-					motor.kabeate_inv();
-				}
-			}
-
-			if(maze.coord.muki == 0){
-				maze.coord.x++;
-			}else if(maze.coord.muki == 1){
-				maze.coord.y++;
-			}else if(maze.coord.muki == 2){
-				maze.coord.x--;
-			}else if(maze.coord.muki == 3){
-				maze.coord.y--;
-			}
-
-			motor.forward(90.0f);
-			if(ir::side_left.wall_detect()){
-				maze.wall_update(maze.coord, 0, 0, 1, 0);
-
-			}
-			if(ir::side_right.wall_detect()){
-				maze.wall_update(maze.coord, 0, 0, 0, 1);
-			}
-			motor.forward(90.0f);
-			if(ir::front_left.wall_detect() || ir::front_right.wall_detect()){
-				maze.wall_update(maze.coord, 1, 0, 0, 0);
-			}
-
-			if(( maze.coord.x == 6 || maze.coord.x == 7) && ( maze.coord.y == 9 || maze.coord.y == 10)){
-				while (1)
-				{
-					led::set(0, 1, 0);
-					HAL_Delay(500);
-					
-					led::set(0, 0, 0);
-					HAL_Delay(500);
-				}
-			}
+			maze.wall_update(mouse.x, mouse.y, 0);
 		}
 
 	}

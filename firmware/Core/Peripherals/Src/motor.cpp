@@ -31,7 +31,7 @@ void Motor::init(void){
 	HAL_GPIO_WritePin(MOTOR_DMODE2_GPIO_Port, MOTOR_DMODE2_Pin, GPIO_PIN_SET);
 
 	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
-	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_8B_R, 40);
+	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_8B_R, 50);
 
 	set_cw(1, 1);
 	//速度を0にする	

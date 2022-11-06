@@ -10,6 +10,8 @@
 #include "ir_led.hpp"
 #include "ir_sensor.hpp"
 #include "maze.hpp"
+#include "tools.hpp"
+
 #include "SEGGER_RTT.h"
 #include "arm_math.h"
 #include "mazelibrary.hpp"
@@ -302,13 +304,23 @@ void true_main(void){
 		mouse.y = 0;
 		mouse.direction = Direction::up;
 		
+		//1回目の壁当ては左壁でやるので右を向く
 		motor.kabeate1();
+		mouse.direction = Direction::right;
+		
 		if(ir::front_left.wall_detect() || ir::front_right.wall_detect()){
-			maze.wall_update(mouse.x, mouse.y, 0);
+			uint8_t temp_wall = Direction::up;
+			temp_wall = tools::get_rotated_wall(mouse.direction, temp_wall);
+			maze.wall_update(mouse.x, mouse.y, temp_wall);
 		}
+		
+		//2回目の壁当ては下壁でやるので上を向く
 		motor.kabeate2();
+		mouse.direction = Direction::up;
 		if(ir::front_left.wall_detect() || ir::front_right.wall_detect()){
-			maze.wall_update(mouse.x, mouse.y, 0);
+			uint8_t temp_wall = Direction::up;
+			temp_wall = tools::get_rotated_wall(mouse.direction, temp_wall);
+			maze.wall_update(mouse.x, mouse.y, temp_wall);
 		}
 
 	}

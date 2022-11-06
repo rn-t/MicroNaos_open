@@ -1,0 +1,3 @@
+[submodule "firmware/lib/MazeLibrary"]
+	path = firmware/lib/MazeLibrary
+	url = https://github.com/rn-t/MazeLibrary

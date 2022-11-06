@@ -4,6 +4,7 @@
             "name": "STM32F405xx",
             "includePath": [
                 "${workspaceFolder}/firmware/**",
+                "${workspaceFolder}/firmware/lib/MazeLibrary/Inc/*",
                 "/opt/gcc-arm-none-eabi/arm-none-eabi/include/**"
             ],
             "defines": [

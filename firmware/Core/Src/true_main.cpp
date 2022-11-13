@@ -261,12 +261,10 @@ void true_main(void){
 	led::init();
 	ir_led::init();
 	motor.init();
-	gyro.init();
+	
 	ir_led::set_state(1,1);
 	Ir_sensor::init();
 
-	//Who_am_iを読みジャイロをチェックする。(RTTに出力)
-	gyro.who_am_i();
 
 	//割り込み用のTIMを起動
 	HAL_TIM_Base_Start_IT(&htim6);
@@ -294,7 +292,7 @@ void true_main(void){
 		
 		//前センサを適度に塞ぐと起動する
 		while (1){
-			if(ir::front_right.wall_detect()){
+			if(ir::front_right.intensity > 1000){
 				start_count++;
 			}else{
 				if(start_count > 0) start_count--;
@@ -305,6 +303,9 @@ void true_main(void){
 		
 		//動作開始	
 		led::set(0, 1, 0);
+		gyro.init();
+		//Who_am_iを読みジャイロをチェックする。(RTTに出力)
+		gyro.who_am_i();
 		HAL_Delay(2000);
 		led::set(0, 0, 0);
 		
@@ -318,7 +319,7 @@ void true_main(void){
 		motor.kabeate1();
 		mouse.direction = Direction::right;
 		
-		if(ir::front_left.intensity > 1000 || ir::front_right.intensity > 1000){
+		if(ir::front_left.intensity > 1000 && ir::front_right.intensity > 1000){
 			uint8_t temp_wall = Direction::up;
 			temp_wall = tools::get_rotated_wall(mouse.direction, temp_wall);
 			maze.wall_update(mouse.x, mouse.y, temp_wall);
@@ -327,13 +328,14 @@ void true_main(void){
 		//2回目の壁当ては下壁でやるので上を向く
 		motor.kabeate2();
 		mouse.direction = Direction::up;
-		if(ir::front_left.intensity > 1000 || ir::front_right.intensity > 1000){
+		if(ir::front_left.intensity > 1000 && ir::front_right.intensity > 1000){
 			uint8_t temp_wall = Direction::up;
 			temp_wall = tools::get_rotated_wall(mouse.direction, temp_wall);
 			maze.wall_update(mouse.x, mouse.y, temp_wall);
 		}
 		motor.forward(90.0f);
 		mouse.y = 1;
+		gyro.z_angle = 0.0f;
 
 		/*---スタート時の処理終了。(0,1からスタート)---*/
 		//実際は(0,0.5)あたりにいる。
@@ -348,7 +350,7 @@ void true_main(void){
     	    while(1){
 				//迷路からの壁情報の読み込み
 				uint8_t temp_wall = 0;
-				if(ir::front_left.wall_detect() || ir::front_right.wall_detect()){
+				if(ir::front_left.wall_detect() && ir::front_right.wall_detect()){
 					temp_wall += Direction::up;
 				}
 				if(ir::side_left.wall_detect()){
@@ -359,6 +361,10 @@ void true_main(void){
 				}
 
 				/*壁補正 or ジャイロでの補正を入れたい*/
+
+				float32_t gyro_turn_deg = -1 * (gyro.z_angle 
+					- static_cast<float32_t>(tools::direction_to_deg(mouse.direction)));
+				motor.turn(tools::deg_normalize(gyro_turn_deg));
 
 				temp_wall = tools::get_rotated_wall(mouse.direction, temp_wall);
 				
@@ -406,6 +412,7 @@ void true_main(void){
 						mouse.turn_180();
 						motor.forward(90.0f);
 						motor.kabeate_turn();
+						gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
 						motor.forward(90.0f);
 						break;
 				}

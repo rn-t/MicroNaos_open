@@ -75,6 +75,11 @@ int16_t tools::direction_to_deg(uint8_t direction){
 
 int16_t tools::deg_sub(int16_t a, int16_t b){
     int16_t out = a - b;
+    return deg_normalize(out);
+}
+
+int16_t tools::deg_normalize(int16_t a){
+    int16_t out = a;
     while(out <= -180 || 180 < out){
         if(out <= -180){
             out += 360;
@@ -83,6 +88,18 @@ int16_t tools::deg_sub(int16_t a, int16_t b){
         }
     }
     return out;
+
 }
 
+float32_t tools::deg_normalize(float32_t a){
+    float32_t out = a;
+    while(out <= -180.0f || 180.0f < out){
+        if(out <= -180.0f){
+            out += 360.0f;
+        }else if(180.0f < out){
+            out -= 360.0f;
+        }
+    }
+    return out;
 
+}

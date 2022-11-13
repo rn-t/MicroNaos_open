@@ -46,8 +46,10 @@ class State{
 
 class Motor{
     public:
-    //タイヤの大きさを設定
-    	const float32_t tire_width = 82.0f; //mm
+        //回転の補正項を設定
+        const float32_t tire_gain  = 0.99f;
+        //タイヤの大きさを設定
+    	const float32_t tire_width = 82.0f * tire_gain; //mm
     	//いわゆる速度パラメーターを設定
 	    float32_t forward_speed = 180.0f; //(mm/s)
 	    float32_t turn_speed = 180.0f; //(deg/s)

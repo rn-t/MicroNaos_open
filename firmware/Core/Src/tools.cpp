@@ -54,4 +54,35 @@ uint8_t tools::get_rotated_wall(uint8_t direction, uint8_t wall){
     return out;
 }
 
+int16_t tools::direction_to_deg(uint8_t direction){
+    uint16_t out = 0;
+    switch(direction){
+            case Direction::up:
+                out = 0;
+                break;
+            case Direction::down:
+                out = 180;
+                break;
+            case Direction::left:
+                out = 90;
+                break;
+            case Direction::right:
+                out = -90;
+                break;
+        }
+    return out;
+}
+
+int16_t tools::deg_sub(int16_t a, int16_t b){
+    int16_t out = a - b;
+    while(out <= -180 || 180 < out){
+        if(out <= -180){
+            out += 360;
+        }else if(180 < out){
+            out -= 360;
+        }
+    }
+    return out;
+}
+
 

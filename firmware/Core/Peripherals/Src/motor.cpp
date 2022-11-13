@@ -187,11 +187,11 @@ void Motor::kabeate2(void){
 	forward(40.5f);
 }
 
-void Motor::kabeate_inv(void){
+void Motor::kabeate_turn(void){
 	turn(90.0f);
 	forward(-60.0f);
 	forward(40.5f);
-	turn(-90.0f);
+	turn(90.0f);
 	forward(-60.0f);
 	forward(40.5f);	
 }

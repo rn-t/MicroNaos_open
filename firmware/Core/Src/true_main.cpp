@@ -29,8 +29,8 @@ extern TIM_HandleTypeDef htim11;
 //各壁センサのインスタンスを作成
 namespace ir{
 	static Ir_sensor side_right(0, 350);
-	static Ir_sensor front_right(1, 1000);
-	static Ir_sensor front_left(2, 1000);
+	static Ir_sensor front_right(1, 300);
+	static Ir_sensor front_left(2, 300);
 	static Ir_sensor side_left(3, 350);
 }
 
@@ -47,6 +47,7 @@ static volatile float32_t gyro_z_e_i = 0.0f;
 
 static Maze maze;
 static Mouse mouse;
+static AdachiMethod method(&maze, &mouse);
 
 static uint8_t usbmouse_enable = 0;
 
@@ -118,6 +119,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 		 * motor.state.forwardではmotor.state.deltamax分だけ直進する。
 		 * 
 		 */
+
 		if(motor.state.mode == motor.state.forward){
 			// モード変更時はdeltaをリセットしておく。
 			if(motor.state.mode_previous != motor.state.forward){
@@ -186,6 +188,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
 			}
 		}
+		
 		motor.update_speed();
 		
 	}
@@ -229,6 +232,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 			}
 		}
 		HAL_ADC_Stop(&hadc2);
+			
+		// 角度を送信
+		char s[8];
+		snprintf(s, sizeof(s), "%f", gyro.z_angle);
+		SEGGER_RTT_printf(0, "gyro_z = %s\n", s);	
 		/*
 		SEGGER_RTT_printf(0, "\n");
 		SEGGER_RTT_printf(0, "+%d+\n", maze.node[0][1].wall.up);
@@ -304,11 +312,13 @@ void true_main(void){
 		mouse.y = 0;
 		mouse.direction = Direction::up;
 		
+		/*---スタート時の処理---*/
+
 		//1回目の壁当ては左壁でやるので右を向く
 		motor.kabeate1();
 		mouse.direction = Direction::right;
 		
-		if(ir::front_left.wall_detect() || ir::front_right.wall_detect()){
+		if(ir::front_left.intensity > 1000 || ir::front_right.intensity > 1000){
 			uint8_t temp_wall = Direction::up;
 			temp_wall = tools::get_rotated_wall(mouse.direction, temp_wall);
 			maze.wall_update(mouse.x, mouse.y, temp_wall);
@@ -317,11 +327,92 @@ void true_main(void){
 		//2回目の壁当ては下壁でやるので上を向く
 		motor.kabeate2();
 		mouse.direction = Direction::up;
-		if(ir::front_left.wall_detect() || ir::front_right.wall_detect()){
+		if(ir::front_left.intensity > 1000 || ir::front_right.intensity > 1000){
 			uint8_t temp_wall = Direction::up;
 			temp_wall = tools::get_rotated_wall(mouse.direction, temp_wall);
 			maze.wall_update(mouse.x, mouse.y, temp_wall);
 		}
+		motor.forward(90.0f);
+		mouse.y = 1;
 
+		/*---スタート時の処理終了。(0,1からスタート)---*/
+		//実際は(0,0.5)あたりにいる。
+
+		for(uint8_t step = 0; step < 4; step++){
+        	if(step == 0 || step == 3){
+        	    method.set_goals(maze.goal);
+        	}else if (step == 2){
+            	method.set_goals(maze.start);
+        	}
+
+    	    while(1){
+				//迷路からの壁情報の読み込み
+				uint8_t temp_wall = 0;
+				if(ir::front_left.wall_detect() || ir::front_right.wall_detect()){
+					temp_wall += Direction::up;
+				}
+				if(ir::side_left.wall_detect()){
+					temp_wall += Direction::left;
+				}
+				if(ir::side_right.wall_detect()){
+					temp_wall += Direction::right;
+				}
+
+				/*壁補正 or ジャイロでの補正を入れたい*/
+
+				temp_wall = tools::get_rotated_wall(mouse.direction, temp_wall);
+				
+				maze.wall_update(mouse.x, mouse.y, temp_wall);
+				std::vector<uint8_t> now{mouse.x, mouse.y};
+				method.set_start(now);
+				if(step == 1){
+					method.set_goals(method.get_unknown_in_shortest());
+					if(method.goals.empty()) break;
+				}
+
+				//コストの再計算
+				method.cost_refresh();
+				//いらない経路の削除
+				method.delete_bad_route();
+				
+				std::vector<std::vector<uint8_t>> question;
+				if(step == 1){
+					question = method.goals;
+				}
+
+				if(method.goal_check() || step == 3) break;
+				int16_t mouse_deg = tools::direction_to_deg(mouse.direction);
+				int16_t maze_deg = tools::direction_to_deg(maze.route[mouse.x][mouse.y]);
+
+				int16_t turn_deg = tools::deg_sub(mouse_deg, maze_deg);
+
+				switch(turn_deg){
+					case 0:
+						motor.forward(180.0f);
+						break;
+					case 90:
+						mouse.turn_inv90();
+						motor.forward(90.0f);
+						motor.turn(-90.0f);
+						motor.forward(90.0f);
+						break;
+					case -90:
+						mouse.turn_90();
+						motor.forward(90.0f);
+						motor.turn(90.0f);
+						motor.forward(90.0f);
+						break;
+					case 180:
+						mouse.turn_180();
+						motor.forward(90.0f);
+						motor.kabeate_turn();
+						motor.forward(90.0f);
+						break;
+				}
+				mouse.move_forward();
+
+			}
+		} 
 	}
+
 }

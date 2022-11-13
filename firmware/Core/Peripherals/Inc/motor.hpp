@@ -79,6 +79,6 @@ class Motor{
         void turn(float32_t deg);
         void kabeate1(void);
         void kabeate2(void);
-        void kabeate_inv(void);
+        void kabeate_turn(void);
 };
 #endif /* INC_MOTOR_HPP_ */

@@ -45,7 +45,10 @@ namespace sw{
 
 static volatile float32_t gyro_z_e_i = 0.0f;
 
-static Maze maze;
+static std::vector<std::vector<uint8_t>> start_coord = {{0, 0}};
+static std::vector<std::vector<uint8_t>> goal_coord = {{3, 3}};
+
+static Maze maze(start_coord, goal_coord);
 static Mouse mouse;
 static AdachiMethod method(&maze, &mouse);
 
@@ -386,7 +389,17 @@ void true_main(void){
 					question = method.goals;
 				}
 
-				if(method.goal_check() || step == 3) break;
+				if(method.goal_check() || step == 3){
+					motor.forward(90.0f);
+					while (1)
+					{
+						led::set(1, 1, 0);
+						HAL_Delay(500);
+						led::set(0, 0, 0);
+						HAL_Delay(500);
+					}
+					break;
+				}
 				int16_t mouse_deg = tools::direction_to_deg(mouse.direction);
 				int16_t maze_deg = tools::direction_to_deg(maze.route[mouse.x][mouse.y]);
 

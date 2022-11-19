@@ -28,10 +28,10 @@ extern TIM_HandleTypeDef htim11;
 
 //各壁センサのインスタンスを作成
 namespace ir{
-	static Ir_sensor side_right(0, 350);
-	static Ir_sensor front_right(1, 300);
-	static Ir_sensor front_left(2, 300);
-	static Ir_sensor side_left(3, 350);
+	static Ir_sensor side_right(0, 550);
+	static Ir_sensor front_right(1, 350);
+	static Ir_sensor front_left(2, 350);
+	static Ir_sensor side_left(3, 550);
 }
 
 //ジャイロセンサのインスタンスを作成
@@ -46,7 +46,7 @@ namespace sw{
 static volatile float32_t gyro_z_e_i = 0.0f;
 
 static std::vector<std::vector<uint8_t>> start_coord = {{0, 0}};
-static std::vector<std::vector<uint8_t>> goal_coord = {{3, 3}};
+static std::vector<std::vector<uint8_t>> goal_coord = {{7, 7}, {7, 8}, {8, 7}, {8, 8}};
 
 static Maze maze(start_coord, goal_coord);
 static Mouse mouse;
@@ -230,7 +230,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 		HAL_ADC_Start(&hadc2);
 		if(HAL_ADC_PollForConversion(&hadc2, 10) == HAL_OK){
 			//約10.5V(3260)を下回った場合は警告する<-11.5Vで引っかかったので3100に変更
-			if(HAL_ADC_GetValue(&hadc2) < 3100){
+			if(HAL_ADC_GetValue(&hadc2) < 3000){
 				failsafe();
 			}
 		}
@@ -318,6 +318,7 @@ void true_main(void){
 		
 		/*---スタート時の処理---*/
 
+
 		//1回目の壁当ては左壁でやるので右を向く
 		motor.kabeate1();
 		mouse.direction = Direction::right;
@@ -336,6 +337,8 @@ void true_main(void){
 			temp_wall = tools::get_rotated_wall(mouse.direction, temp_wall);
 			maze.wall_update(mouse.x, mouse.y, temp_wall);
 		}
+
+
 		motor.forward(90.0f);
 		mouse.y = 1;
 		gyro.z_angle = 0.0f;
@@ -363,11 +366,59 @@ void true_main(void){
 					temp_wall += Direction::right;
 				}
 
-				/*壁補正 or ジャイロでの補正を入れたい*/
-
+				/*ジャイロでの補正*/
 				float32_t gyro_turn_deg = -1 * (gyro.z_angle 
 					- static_cast<float32_t>(tools::direction_to_deg(mouse.direction)));
 				motor.turn(tools::deg_normalize(gyro_turn_deg));
+
+
+				/*壁での補正*/
+/*
+
+				if(temp_wall != 0){
+					
+					const float32_t wall_gain = 20.0f;
+					float32_t wall_turn_deg = 0.0f;
+					float32_t l_intensity = static_cast<float32_t>(ir::side_left.intensity);
+					float32_t r_intensity = static_cast<float32_t>(ir::side_right.intensity);
+					uint8_t wall_turn_flag = 0;
+
+					if(l_intensity > 650 || r_intensity > 650){
+					
+						if(temp_wall == (Direction::left + Direction::right)){
+							if(l_intensity > r_intensity){
+								wall_turn_flag = 1;
+							}else{
+								wall_turn_flag = 2;
+							}
+						}else if(temp_wall == Direction::left){
+							wall_turn_flag = 1;	
+						}else if(temp_wall == Direction::right){
+							wall_turn_flag = 2;
+						}
+
+						if(wall_turn_flag == 1){
+							if (l_intensity > 1200.0f){
+								l_intensity = 1200.0f;
+							}
+							l_intensity -= 650.0f;
+							l_intensity /= 550.0f;
+
+							wall_turn_deg = -1.0 * l_intensity * wall_gain;
+						}else if (wall_turn_flag == 2){
+							if (r_intensity > 1200.0f){
+								r_intensity = 1200.0f;
+							}
+							r_intensity -= 650.0f;
+							r_intensity /= 550.0f;
+
+							wall_turn_deg = r_intensity * wall_gain;
+						}
+						motor.turn(tools::deg_normalize(wall_turn_deg));
+					}
+				}
+
+*/				
 
 				temp_wall = tools::get_rotated_wall(mouse.direction, temp_wall);
 				

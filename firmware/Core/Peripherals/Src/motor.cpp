@@ -172,6 +172,11 @@ void Motor::turn(float32_t deg){
 	HAL_Delay(2);
 }
 
+void Motor::kabeate0(void){
+	forward(-60.0f);
+	forward(40.5f);
+}
+
 void Motor::kabeate1(void){
 	turn(-90.0f);
 	forward(-60.0f);

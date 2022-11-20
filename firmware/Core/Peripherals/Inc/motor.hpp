@@ -88,6 +88,7 @@ class Motor{
         
         void forward(float32_t length);
         void turn(float32_t deg);
+        void kabeate0(void);
         void kabeate1(void);
         void kabeate2(void);
         void kabeate_turn(void);

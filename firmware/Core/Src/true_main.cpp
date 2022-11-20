@@ -47,7 +47,7 @@ static volatile float32_t gyro_z_e_i = 0.0f;
 
 static std::vector<std::vector<uint8_t>> start_coord = {{0, 0}};
 //static std::vector<std::vector<uint8_t>> goal_coord = {{7, 7}, {7, 8}, {8, 7}, {8, 8}};
-static std::vector<std::vector<uint8_t>> goal_coord = {{7, 0}};
+static std::vector<std::vector<uint8_t>> goal_coord = {{6, 0}, {7, 0}, {6, 1}, {7, 1}};
 
 static Maze maze(start_coord, goal_coord);
 static Mouse mouse;
@@ -378,20 +378,21 @@ void true_main(void){
 		mouse.y = 1;
 		gyro.z_angle = 0.0f;
 
-		
+		uint8_t kabeate_count = 0;	
+		uint8_t forward_count = 0;	
 
 		/*---スタート時の処理終了。(0,1からスタート)---*/
 		//実際は(0,0.5)あたりにいる。
 
-		for(uint8_t step = 0; step < 4; step++){
-        	if(step == 0 || step == 3){
+		for(uint8_t step = 0; step < 5; step++){
+        	if(step == 0 || step == 4){
         	    method.set_goals(maze.goal);
-        	}else if (step == 2){
+        	}else if (step == 3){
             	method.set_goals(maze.start);
         	}
 
-    	    while(1){
-				//迷路からの壁情報の読み込み
+			while(1){	
+			//迷路からの壁情報の読み込み
 				uint8_t temp_wall = 0;
 				if(ir::front_left.wall_detect() && ir::front_right.wall_detect()){
 					temp_wall += Direction::up;
@@ -408,63 +409,28 @@ void true_main(void){
 					- static_cast<float32_t>(tools::direction_to_deg(mouse.direction)));
 				motor.turn(tools::deg_normalize(gyro_turn_deg));
 
-
-				/*壁での補正*/
-/*
-
-				if(temp_wall != 0){
-					
-					const float32_t wall_gain = 20.0f;
-					float32_t wall_turn_deg = 0.0f;
-					float32_t l_intensity = static_cast<float32_t>(ir::side_left.intensity);
-					float32_t r_intensity = static_cast<float32_t>(ir::side_right.intensity);
-					uint8_t wall_turn_flag = 0;
-
-					if(l_intensity > 650 || r_intensity > 650){
-					
-						if(temp_wall == (Direction::left + Direction::right)){
-							if(l_intensity > r_intensity){
-								wall_turn_flag = 1;
-							}else{
-								wall_turn_flag = 2;
-							}
-						}else if(temp_wall == Direction::left){
-							wall_turn_flag = 1;	
-						}else if(temp_wall == Direction::right){
-							wall_turn_flag = 2;
-						}
-
-						if(wall_turn_flag == 1){
-							if (l_intensity > 1200.0f){
-								l_intensity = 1200.0f;
-							}
-							l_intensity -= 650.0f;
-							l_intensity /= 550.0f;
-
-							wall_turn_deg = -1.0 * l_intensity * wall_gain;
-						}else if (wall_turn_flag == 2){
-							if (r_intensity > 1200.0f){
-								r_intensity = 1200.0f;
-							}
-							r_intensity -= 650.0f;
-							r_intensity /= 550.0f;
-
-							wall_turn_deg = r_intensity * wall_gain;
-						}
-						motor.turn(tools::deg_normalize(wall_turn_deg));
-					}
-				}
-
-*/				
-
-				temp_wall = tools::get_rotated_wall(mouse.direction, temp_wall);
+				uint8_t rotated_wall = tools::get_rotated_wall(mouse.direction, temp_wall);
 				
-				maze.wall_update(mouse.x, mouse.y, temp_wall);
+				maze.wall_update(mouse.x, mouse.y, rotated_wall);
 				std::vector<uint8_t> now{mouse.x, mouse.y};
 				method.set_start(now);
+
 				if(step == 1){
+					led::set(1, 1, 0);
+					
+					method.goals.clear();
+					for(const auto& g : maze.goal){
+						if((maze.wall[g[0]][g[1]] & Maze::IS_SEARCHED) == 0){
+							method.goals.push_back(g);
+						}
+					}
+					if(method.goals.empty()) break;
+
+				}else if(step == 2){
+					led::set(1, 0, 1);
 					method.set_goals(method.get_unknown_in_shortest());
 					if(method.goals.empty()) break;
+
 				}
 
 				//コストの再計算
@@ -472,53 +438,148 @@ void true_main(void){
 				//いらない経路の削除
 				method.delete_bad_route();
 				
-				std::vector<std::vector<uint8_t>> question;
-				if(step == 1){
-					question = method.goals;
-				}
-
-				if(method.goal_check() || step == 3){
-					motor.forward(90.0f);
-					while (1)
-					{
-						led::set(1, 1, 0);
-						HAL_Delay(500);
-						led::set(0, 0, 0);
-						HAL_Delay(500);
-					}
+				if(step == 0 && method.goal_check()){
 					break;
 				}
+				
 				int16_t mouse_deg = tools::direction_to_deg(mouse.direction);
 				int16_t maze_deg = tools::direction_to_deg(maze.route[mouse.x][mouse.y]);
 
 				int16_t turn_deg = tools::deg_sub(mouse_deg, maze_deg);
+				
+				if(step == 3 && method.goal_check()){
+					motor.forward(90.0f);
+					turn_deg = tools::deg_sub(mouse_deg, Direction::up);
+					switch(turn_deg){
+						case 0:
+							break;
+						case 90:
+							mouse.turn_inv90();
+							motor.turn(-90.0f);
+							break;
+						case -90:
+							mouse.turn_90();
+							motor.turn(90.0f);
+							break;
+						case 180:
+							mouse.turn_180();
+							motor.turn(180.0f);
+							break;
+					}
 
-				switch(turn_deg){
-					case 0:
-						motor.forward(180.0f);
-						break;
-					case 90:
-						mouse.turn_inv90();
-						motor.forward(90.0f);
-						motor.turn(-90.0f);
-						motor.forward(90.0f);
-						break;
-					case -90:
-						mouse.turn_90();
-						motor.forward(90.0f);
-						motor.turn(90.0f);
-						motor.forward(90.0f);
-						break;
-					case 180:
-						mouse.turn_180();
-						motor.forward(90.0f);
-						motor.kabeate_turn();
-						gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
-						motor.forward(90.0f);
-						break;
+					motor.kabeate1();
+					motor.kabeate2();
+
+					led::set(1, 1, 1);
+					HAL_Delay(2000);
+
+					break;
 				}
-				mouse.move_forward();
 
+				if(step < 4){
+					switch(turn_deg){
+						case 0:
+							motor.forward(180.0f);
+							break;
+						case 90:
+							mouse.turn_inv90();
+							motor.forward(90.0f);
+
+							if(kabeate_count == 0){
+								motor.turn(-90.0f);
+								kabeate_count++;
+							}else{
+								if(temp_wall == (Direction::left + Direction::up)){
+									motor.turn(180.0f);
+									motor.kabeate0();
+									motor.turn(90.0f);
+									motor.kabeate0();
+									gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
+								}else if(temp_wall == (Direction::up)){
+									motor.turn(180.0f);
+									motor.kabeate0();
+									gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
+									motor.turn(90.0f);
+								}else if(temp_wall == (Direction::left)){
+									motor.turn(-90.0f);
+									motor.kabeate0();
+									gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
+								}
+
+								kabeate_count = 0;
+
+							}
+							
+							motor.forward(90.0f);
+							break;
+
+						case -90:
+							mouse.turn_90();
+							motor.forward(90.0f);
+
+							if(kabeate_count == 0){
+								motor.turn(90.0f);
+								kabeate_count++;
+							}else{
+								if(temp_wall == (Direction::right + Direction::up)){
+									motor.turn(180.0f);
+									motor.kabeate0();
+									motor.turn(-90.0f);
+									motor.kabeate0();
+									gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
+								}else if(temp_wall == (Direction::up)){
+									motor.turn(180.0f);
+									motor.kabeate0();
+									gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
+									motor.turn(-90.0f);
+								}else if(temp_wall == (Direction::right)){
+									motor.turn(90.0f);
+									motor.kabeate0();
+									gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
+								}
+
+								kabeate_count = 0;
+							}
+
+							motor.forward(90.0f);
+							break;
+
+						case 180:
+							mouse.turn_180();
+							motor.forward(90.0f);
+							if(temp_wall == (Direction::left + Direction::right + Direction::up)){
+								motor.kabeate_turn();
+								gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
+							}
+							motor.forward(90.0f);
+							break;
+					}
+				}else{
+					switch(turn_deg){
+						case 0:
+							motor.forward(180.0f);
+							break;
+						case 90:
+							mouse.turn_inv90();
+							motor.forward(90.0f);
+							motor.turn(-90.0f);
+							motor.forward(90.0f);
+							break;
+						case -90:
+							mouse.turn_90();
+							motor.forward(90.0f);
+							motor.turn(90.0f);
+							motor.forward(90.0f);
+							break;
+						case 180:
+							mouse.turn_180();
+							motor.turn(180.0f);
+							motor.forward(90.0f);
+							break;
+					}
+				}
+
+				mouse.move_forward();
 			}
 		} 
 	}

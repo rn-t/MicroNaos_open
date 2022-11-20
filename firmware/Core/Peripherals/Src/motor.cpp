@@ -78,9 +78,6 @@ void Motor::set_speed(float32_t speed_l, float32_t speed_r){
 	} 
 	set_cw(cw[0], cw[1]);
 
-	//車輪の直径を入力
-	const float32_t diameter = 32.0f; //mm
-	const float32_t radius = diameter / 2.0f; //mm
 	//周期をusで計算する
 	const float32_t period_l = 1000000.0f * radius * PI / 3200.0f / speed_l;
 	const float32_t period_r = 1000000.0f * radius * PI / 3200.0f / speed_r;
@@ -157,7 +154,7 @@ float32_t Motor::speed_to_degspeed(float32_t speed){
 }
 
 void Motor::forward(float32_t length){
-	state.delta_max = length;
+	state.delta_max = length * forward_gain;
 	state.mode = state.forward;
 	HAL_Delay(2);
 	while (1){

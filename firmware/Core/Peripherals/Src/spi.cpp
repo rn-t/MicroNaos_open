@@ -120,6 +120,9 @@ namespace spi{
 	 * 
 	 */
 	void Gyro::calibration_gyro_z(void){
+		if (buffer_index_ == 0){
+			gyro_z_drift = 0.0f;
+		}
 		if (buffer_index_ < buffer_size_){
 			buffer_[buffer_index_] = static_cast<float32_t>(read_gyro_z());
     		buffer_index_++;

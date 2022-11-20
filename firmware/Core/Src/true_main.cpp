@@ -28,10 +28,10 @@ extern TIM_HandleTypeDef htim11;
 
 //各壁センサのインスタンスを作成
 namespace ir{
-	static Ir_sensor side_right(0, 550);
-	static Ir_sensor front_right(1, 350);
-	static Ir_sensor front_left(2, 350);
-	static Ir_sensor side_left(3, 550);
+	static Ir_sensor side_right(0, 350);
+	static Ir_sensor front_right(1, 300);
+	static Ir_sensor front_left(2, 300);
+	static Ir_sensor side_left(3, 350);
 }
 
 //ジャイロセンサのインスタンスを作成
@@ -46,7 +46,8 @@ namespace sw{
 static volatile float32_t gyro_z_e_i = 0.0f;
 
 static std::vector<std::vector<uint8_t>> start_coord = {{0, 0}};
-static std::vector<std::vector<uint8_t>> goal_coord = {{7, 7}, {7, 8}, {8, 7}, {8, 8}};
+//static std::vector<std::vector<uint8_t>> goal_coord = {{7, 7}, {7, 8}, {8, 7}, {8, 8}};
+static std::vector<std::vector<uint8_t>> goal_coord = {{7, 0}};
 
 static Maze maze(start_coord, goal_coord);
 static Mouse mouse;
@@ -160,6 +161,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 		}else if(motor.state.mode == motor.state.turn){
 			// モード変更時はdeltaをリセットしておく。
 			if(motor.state.mode_previous != motor.state.turn){
+				motor.state.deg_std = gyro.z_angle;
+				gyro_z_e_i = 0.0f;
 				motor.state.delta_deg = 0.0f;
 				motor.state.mode_lock = 1;
 
@@ -175,15 +178,33 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 				motor.set_target_deg(target_speed_deg);
 				motor.state.mode_previous = motor.state.turn;
 			}else{
-				motor.state.delta_deg += motor.speed_to_degspeed(motor.speedstate_l.current) * motor.t_scale;
+				//差分を取得
+				motor.state.delta_deg = motor.state.delta_max_deg - (gyro.z_angle - motor.state.deg_std);
 
-				if(abs(motor.state.delta_max_deg - motor.state.delta_deg) 
-					< motor.turn_speed * (motor.turn_speed / motor.speed_to_degspeed(motor.accel)) / 2.0f){
+				float32_t temp_deg_speed;
+				const float32_t Kp = 10.0f;
+				const float32_t Ki = 0.01f;
+				const float32_t Kd = 1.0f;
 				
-					//回転方向の速度を0に設定
-					motor.set_target_deg(0.0f);
-				}
+				float32_t gyro_z_e = motor.state.delta_deg;
+				
+				//数値積分
+				gyro_z_e_i += gyro_z_e;
+				if(gyro_z_e_i > 10.0f) gyro_z_e_i = 10.0f;
+				if(gyro_z_e_i < -10.0f) gyro_z_e_i = -10.0f;
+
+				//数値微分
+				float32_t gyro_z_e_d = gyro.z_angle - gyro.z_angle_previous;
+
+				temp_deg_speed = Kp * gyro_z_e + Ki * gyro_z_e_i + Kd * gyro_z_e_d;
+				
+				if(temp_deg_speed > motor.turn_speed) temp_deg_speed = motor.turn_speed;
+				if(temp_deg_speed < -1 * motor.turn_speed) temp_deg_speed = -1 * motor.turn_speed;
+
+				motor.set_target_deg(temp_deg_speed);
+
 				if(abs(motor.speedstate_l.current) < (motor.accel * motor.t_scale)){
+					motor.set_target_deg(0.0f);
 					motor.state.mode = motor.state.stop;
 					motor.state.mode_previous = motor.state.stop;
 					motor.state.mode_lock = 0;
@@ -264,6 +285,10 @@ void true_main(void){
 	led::init();
 	ir_led::init();
 	motor.init();
+	gyro.init();
+	
+	//Who_am_iを読みジャイロをチェックする。(RTTに出力)
+	gyro.who_am_i();
 	
 	ir_led::set_state(1,1);
 	Ir_sensor::init();
@@ -306,9 +331,11 @@ void true_main(void){
 		
 		//動作開始	
 		led::set(0, 1, 0);
-		gyro.init();
-		//Who_am_iを読みジャイロをチェックする。(RTTに出力)
-		gyro.who_am_i();
+		
+		gyro.calibration_status = 0;
+		while(gyro.calibration_status == 0);
+		gyro.z_angle = 0.0f;
+		
 		HAL_Delay(2000);
 		led::set(0, 0, 0);
 		
@@ -316,6 +343,14 @@ void true_main(void){
 		mouse.y = 0;
 		mouse.direction = Direction::up;
 		
+		/*デバッグ向け回転処理*/
+		/*
+		for (uint8_t i = 0; i < 4; i++){
+			motor.turn(90.0f);
+			HAL_Delay(10);
+		}
+		while(1){}
+		*/
 		/*---スタート時の処理---*/
 
 
@@ -342,6 +377,8 @@ void true_main(void){
 		motor.forward(90.0f);
 		mouse.y = 1;
 		gyro.z_angle = 0.0f;
+
+		
 
 		/*---スタート時の処理終了。(0,1からスタート)---*/
 		//実際は(0,0.5)あたりにいる。

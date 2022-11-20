@@ -40,6 +40,7 @@ class State{
         volatile float32_t delta = 0.0f;
         volatile float32_t delta_max = 90.0f;
         
+        volatile float32_t deg_std = 0.0f;
         volatile float32_t delta_deg = 0.0f;
         volatile float32_t delta_max_deg = 90.0f;
 };
@@ -47,9 +48,17 @@ class State{
 class Motor{
     public:
         //回転の補正項を設定
-        const float32_t tire_gain  = 0.99f;
+        const float32_t tire_gain  = 1.000f;
+
+        const float32_t forward_gain = 1.00f;
+
+        //車輪の直径を入力
+        const float32_t diameter = 32.0f * tire_gain; //mm
+        const float32_t radius = diameter / 2.0f; //mm
+
+        
         //タイヤの大きさを設定
-    	const float32_t tire_width = 82.0f * tire_gain; //mm
+    	const float32_t tire_width = 82.0f; //mm
     	//いわゆる速度パラメーターを設定
 	    float32_t forward_speed = 180.0f; //(mm/s)
 	    float32_t turn_speed = 180.0f; //(deg/s)

@@ -46,8 +46,9 @@ namespace sw{
 static volatile float32_t gyro_z_e_i = 0.0f;
 
 static std::vector<std::vector<uint8_t>> start_coord = {{0, 0}};
+static std::vector<std::vector<uint8_t>> goal_coord = {{7, 7}, {7, 8}, {8, 7}, {8, 8}};
 //static std::vector<std::vector<uint8_t>> goal_coord = {{7, 7}, {7, 8}, {8, 7}, {8, 8}};
-static std::vector<std::vector<uint8_t>> goal_coord = {{6, 0}, {7, 0}, {6, 1}, {7, 1}};
+//static std::vector<std::vector<uint8_t>> goal_coord = {{6, 0}, {7, 0}, {6, 1}, {7, 1}};
 
 static Maze maze(start_coord, goal_coord);
 static Mouse mouse;
@@ -182,10 +183,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 				motor.state.delta_deg = motor.state.delta_max_deg - (gyro.z_angle - motor.state.deg_std);
 
 				float32_t temp_deg_speed;
+				/*
 				const float32_t Kp = 10.0f;
 				const float32_t Ki = 0.01f;
 				const float32_t Kd = 1.0f;
+				*/
 				
+				const float32_t Kp = 8.0f;
+				const float32_t Ki = 0.05f;
+				const float32_t Kd = 2.0f;
+
 				float32_t gyro_z_e = motor.state.delta_deg;
 				
 				//数値積分
@@ -240,10 +247,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 			if (sw::r == 1) usbmouse.button = usbmouse.button | 0b00000010;
 			if (sw::l == 1) usbmouse.button = usbmouse.button | 0b00000001;
 
-			mouse.x = -1 * (gyro.read_accel_x() / 16) / 5;
-			mouse.y = (gyro.read_accel_y() / 16) / 5;
+			usbmouse.x = -1 * (gyro.read_accel_x() / 16) / 5;
+			usbmouse.y = -1 * (gyro.read_accel_y() / 16) / 5;
 			
-			USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t *) &mouse, sizeof(struct Mouse));
+			USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t *) &usbmouse, sizeof(struct USBMouse));
 			SEGGER_RTT_printf(0, "%d, %d, %d, %d\n", ir::side_left.intensity, ir::front_left.intensity, ir::front_right.intensity, ir::side_right.intensity);	
 		}
 
@@ -258,9 +265,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 		HAL_ADC_Stop(&hadc2);
 			
 		// 角度を送信
-		char s[8];
-		snprintf(s, sizeof(s), "%f", gyro.z_angle);
-		SEGGER_RTT_printf(0, "gyro_z = %s\n", s);	
+		//char s[8];
+		//snprintf(s, sizeof(s), "%f", gyro.z_angle);
+		//SEGGER_RTT_printf(0, "gyro_z = %s\n", s);	
 		/*
 		SEGGER_RTT_printf(0, "\n");
 		SEGGER_RTT_printf(0, "+%d+\n", maze.node[0][1].wall.up);
@@ -352,8 +359,7 @@ void true_main(void){
 		while(1){}
 		*/
 		/*---スタート時の処理---*/
-
-
+		
 		//1回目の壁当ては左壁でやるので右を向く
 		motor.kabeate1();
 		mouse.direction = Direction::right;
@@ -379,7 +385,6 @@ void true_main(void){
 		gyro.z_angle = 0.0f;
 
 		uint8_t kabeate_count = 0;	
-		uint8_t forward_count = 0;	
 
 		/*---スタート時の処理終了。(0,1からスタート)---*/
 		//実際は(0,0.5)あたりにいる。
@@ -449,7 +454,7 @@ void true_main(void){
 				
 				if(step == 3 && method.goal_check()){
 					motor.forward(90.0f);
-					turn_deg = tools::deg_sub(mouse_deg, Direction::up);
+					turn_deg = tools::deg_sub(mouse_deg, tools::direction_to_deg(Direction::up));
 					switch(turn_deg){
 						case 0:
 							break;
@@ -472,20 +477,44 @@ void true_main(void){
 
 					led::set(1, 1, 1);
 					HAL_Delay(2000);
+					
+					gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
 
+					motor.forward(90.0f);
+					mouse.y = 1;
 					break;
 				}
 
 				if(step < 4){
+					
+					const uint16_t side_wall_near = 1200;
 					switch(turn_deg){
 						case 0:
-							motor.forward(180.0f);
+
+							if(ir::side_left.intensity > side_wall_near){
+								motor.forward(90.0f);
+								motor.turn(90.0f);
+								motor.kabeate0();
+								motor.turn(-90.0f);
+								motor.forward(90.0f);
+
+							}else if(ir::side_right.intensity > side_wall_near){
+								motor.forward(90.0f);
+								motor.turn(-90.0f);
+								motor.kabeate0();
+								motor.turn(90.0f);
+								motor.forward(90.0f);
+
+							}else{
+								motor.forward(180.0f);
+							}
 							break;
+
 						case 90:
 							mouse.turn_inv90();
 							motor.forward(90.0f);
 
-							if(kabeate_count == 0){
+							if(kabeate_count == 0 || temp_wall == 0){
 								motor.turn(-90.0f);
 								kabeate_count++;
 							}else{
@@ -498,8 +527,8 @@ void true_main(void){
 								}else if(temp_wall == (Direction::up)){
 									motor.turn(180.0f);
 									motor.kabeate0();
-									gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
 									motor.turn(90.0f);
+									gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
 								}else if(temp_wall == (Direction::left)){
 									motor.turn(-90.0f);
 									motor.kabeate0();
@@ -517,7 +546,7 @@ void true_main(void){
 							mouse.turn_90();
 							motor.forward(90.0f);
 
-							if(kabeate_count == 0){
+							if(kabeate_count == 0 || temp_wall == 0){
 								motor.turn(90.0f);
 								kabeate_count++;
 							}else{
@@ -530,8 +559,8 @@ void true_main(void){
 								}else if(temp_wall == (Direction::up)){
 									motor.turn(180.0f);
 									motor.kabeate0();
-									gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
 									motor.turn(-90.0f);
+									gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
 								}else if(temp_wall == (Direction::right)){
 									motor.turn(90.0f);
 									motor.kabeate0();
@@ -547,10 +576,26 @@ void true_main(void){
 						case 180:
 							mouse.turn_180();
 							motor.forward(90.0f);
-							if(temp_wall == (Direction::left + Direction::right + Direction::up)){
-								motor.kabeate_turn();
+							
+							if(temp_wall == (Direction::left + Direction::right + Direction::up)
+							|| temp_wall == (Direction::right + Direction::up)){
+								motor.kabeate_turn_r();
 								gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
+							}else if(temp_wall == (Direction::left + Direction::up)){
+								motor.kabeate_turn_l();
+								gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
+							}else if(temp_wall == Direction::left){
+								motor.turn(-90.0f);
+								motor.kabeate0();
+								motor.turn(-90.0f);
+							}else if(temp_wall == Direction::right){
+								motor.turn(90.0f);
+								motor.kabeate0();
+								motor.turn(90.0f);
+							}else{
+								motor.turn(180.0f);
 							}
+
 							motor.forward(90.0f);
 							break;
 					}

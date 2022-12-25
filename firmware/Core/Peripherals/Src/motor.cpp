@@ -154,6 +154,11 @@ float32_t Motor::speed_to_degspeed(float32_t speed){
 }
 
 void Motor::forward(float32_t length){
+	if(length < 80.0f){
+		forward_speed = 180.0f;
+	}else{
+		forward_speed = 270.0f;
+	}
 	state.delta_max = length * forward_gain;
 	state.mode = state.forward;
 	HAL_Delay(2);
@@ -173,27 +178,29 @@ void Motor::turn(float32_t deg){
 }
 
 void Motor::kabeate0(void){
-	forward(-60.0f);
+	forward(-70.0f);
 	forward(40.5f);
 }
 
 void Motor::kabeate1(void){
 	turn(-90.0f);
-	forward(-60.0f);
-	forward(40.5f);
+	kabeate0();
 }
 
 void Motor::kabeate2(void){
 	turn(90.0f);
-	forward(-60.0f);
-	forward(40.5f);
+	kabeate0();
 }
 
-void Motor::kabeate_turn(void){
+void Motor::kabeate_turn_l(void){
+	turn(-90.0f);
+	kabeate0();
+	turn(-90.0f);
+	kabeate0();
+}
+void Motor::kabeate_turn_r(void){
 	turn(90.0f);
-	forward(-60.0f);
-	forward(40.5f);
+	kabeate0();
 	turn(90.0f);
-	forward(-60.0f);
-	forward(40.5f);	
+	kabeate0();
 }

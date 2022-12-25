@@ -60,8 +60,8 @@ class Motor{
         //タイヤの大きさを設定
     	const float32_t tire_width = 82.0f; //mm
     	//いわゆる速度パラメーターを設定
-	    float32_t forward_speed = 180.0f; //(mm/s)
-	    float32_t turn_speed = 180.0f; //(deg/s)
+	    float32_t forward_speed = 270.0f; //(mm/s)
+	    float32_t turn_speed = 270.0f; //(deg/s)
 
         //加速度を設定
         const float32_t accel = 900.0f; //(mm/s^2)
@@ -91,6 +91,7 @@ class Motor{
         void kabeate0(void);
         void kabeate1(void);
         void kabeate2(void);
-        void kabeate_turn(void);
+        void kabeate_turn_l(void);
+        void kabeate_turn_r(void);
 };
 #endif /* INC_MOTOR_HPP_ */

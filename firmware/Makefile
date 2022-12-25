@@ -52,7 +52,7 @@ $(wildcard Core/Src/*.c)
 CPP_SOURCES = \
 $(wildcard Core/Src/*.cpp) \
 $(wildcard Core/Peripherals/Src/*.cpp) \
-$(filter-out lib/MazeLibrary/Src/simulator.cpp, $(wildcard lib/MazeLibrary/Src/*.cpp))
+$(filter-out lib/MazeLibrary/Src/simulator.cpp lib/MazeLibrary/Src/print.cpp,  $(wildcard lib/MazeLibrary/Src/*.cpp))
 
 # ASM sources
 ASM_SOURCES =  \

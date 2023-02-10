@@ -37,6 +37,8 @@ class State{
         uint8_t mode_previous = 0;
         uint8_t mode_lock = 0;
 
+        uint8_t slow_down = 1;
+
         volatile float32_t delta = 0.0f;
         volatile float32_t delta_max = 90.0f;
         
@@ -86,7 +88,7 @@ class Motor{
         float32_t deg_speed_to_speed(float32_t deg_speed);
         float32_t speed_to_degspeed(float32_t speed);
         
-        void forward(float32_t length);
+        void forward(float32_t length, uint8_t slow_down);
         void turn(float32_t deg);
         void kabeate0(void);
         void kabeate1(void);

@@ -153,7 +153,7 @@ float32_t Motor::speed_to_degspeed(float32_t speed){
 	return (speed * 2.0f * 180.0f) /( tire_width * PI);
 }
 
-void Motor::forward(float32_t length){
+void Motor::forward(float32_t length, uint8_t slow_down = 1){
 	if(length < 80.0f){
 		forward_speed = 180.0f;
 	}else{
@@ -161,12 +161,13 @@ void Motor::forward(float32_t length){
 	}
 	state.delta_max = length * forward_gain;
 	state.mode = state.forward;
+	state.slow_down = slow_down;
 	HAL_Delay(2);
 	while (1){
 		if(state.mode_lock == 0) break;
 	}
-	HAL_Delay(2);
 }
+
 void Motor::turn(float32_t deg){
 	state.delta_max_deg = deg;
 	state.mode = state.turn;

@@ -145,19 +145,28 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 			}else{
 				motor.state.delta += motor.speedstate_l.current * motor.t_scale;
 
-				if(abs(motor.state.delta_max - motor.state.delta) 
-					< motor.forward_speed * (motor.forward_speed / motor.accel) / 2.0f){
-				
-					//速度ターゲットを0に設定する
-					//拘束条件として右と左のスピードは同じになる。
-					motor.set_target(0.0f, 0.0f);
+				if(motor.state.slow_down == 1){
+					//減速を行う場合(デフォルト)
+					if(abs(motor.state.delta_max - motor.state.delta) 
+						< motor.forward_speed * (motor.forward_speed / motor.accel) / 2.0f){
+					
+						//速度ターゲットを0に設定する
+						//拘束条件として右と左のスピードは同じになる。
+						motor.set_target(0.0f, 0.0f);
+					}
+					if(abs(motor.speedstate_l.current) < (motor.accel * motor.t_scale)){
+						motor.state.mode = motor.state.stop;
+						motor.state.mode_previous = motor.state.stop;
+						motor.state.mode_lock = 0;
+					}
+				}else{
+					if(abs(motor.state.delta_max - motor.state.delta) < (motor.forward_speed * motor.t_scale)){
+						//形式的にstopにしておく(あまり直観的ではない)
+						motor.state.mode = motor.state.stop;
+						motor.state.mode_previous = motor.state.stop;
+						motor.state.mode_lock = 0;
+					}
 				}
-				if(abs(motor.speedstate_l.current) < (motor.accel * motor.t_scale)){
-					motor.state.mode = motor.state.stop;
-					motor.state.mode_previous = motor.state.stop;
-					motor.state.mode_lock = 0;
-				}
-
 			}
 		}else if(motor.state.mode == motor.state.turn){
 			// モード変更時はdeltaをリセットしておく。

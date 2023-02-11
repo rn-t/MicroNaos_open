@@ -153,7 +153,7 @@ float32_t Motor::speed_to_degspeed(float32_t speed){
 	return (speed * 2.0f * 180.0f) /( tire_width * PI);
 }
 
-void Motor::forward(float32_t length, uint8_t slow_down = 1){
+void Motor::forward(float32_t length, uint8_t slow_down){
 	if(length < 80.0f){
 		forward_speed = 180.0f;
 	}else{

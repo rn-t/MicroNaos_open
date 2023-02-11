@@ -15,8 +15,7 @@
             "compilerPath": "/opt/gcc-arm-none-eabi/bin/arm-none-eabi-g++",
             "intelliSenseMode": "linux-gcc-arm",
             "cStandard": "gnu17",
-            "cppStandard": "gnu++14",
-            "configurationProvider": "ms-vscode.makefile-tools"
+            "cppStandard": "gnu++14"
         }
     ],
     "version": 4

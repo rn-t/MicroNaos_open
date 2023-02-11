@@ -6,11 +6,11 @@
         "string": "cpp"
     },
     "cortex-debug.variableUseNaturalFormat": true,
-    "makefile.makeDirectory": "/home/hitomosi/MicroNaos/firmware",
+    "makefile.makefilePath": "${workspaceFolder}/firmware",
     "makefile.launchConfigurations": [
         {
-            "cwd": "/home/hitomosi/MicroNaos/firmware/build",
-            "binaryPath": "/home/hitomosi/MicroNaos/firmware/build/MicroNaos.elf",
+            "cwd": "${workspaceFolder}/firmware/build",
+            "binaryPath": "${workspaceFolder}/firmware/build/MicroNaos.elf",
             "binaryArgs": []
         }
     ]

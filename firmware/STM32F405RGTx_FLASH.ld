@@ -63,7 +63,9 @@ MEMORY
 {
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 128K
 CCMRAM (xrw)      : ORIGIN = 0x10000000, LENGTH = 64K
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 1024K
+FLASH_ISR_VEC (rx)      : ORIGIN = 0x8000000, LENGTH = 16K /* isr_vectorを置くSECTOR0の領域 */
+FLASH_DATA (rx)      : ORIGIN = 0x8004000, LENGTH = 16K /* 迷路データを置くSECTOR1の領域 */
+FLASH (rx)      : ORIGIN = 0x8008000, LENGTH = 992K
 }
 
 /* Define output sections */
@@ -75,7 +77,14 @@ SECTIONS
     . = ALIGN(4);
     KEEP(*(.isr_vector)) /* Startup code */
     . = ALIGN(4);
-  } >FLASH
+  } >FLASH_ISR_VEC
+
+  /* 迷路データを置くSECTOR1の領域 */
+  .flash_data :
+  {
+    _flash_data_start = .; /* _flash_data_startをFLASH_DATAの先頭アドレスに配置する。&_flash_data_startでFLASH_DATAの先頭アドレスを読めるようになる */
+    . = . + LENGTH(FLASH_DATA); /* ロケーションカウンタを最後まで移動する */
+  } >FLASH_DATA
 
   /* The program code and other data goes into FLASH */
   .text :

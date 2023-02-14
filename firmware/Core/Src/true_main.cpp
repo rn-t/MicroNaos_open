@@ -481,6 +481,10 @@ void true_main(void){
 				}
 				*/
 
+				if(step == 3){
+					method.set_wall_at_unknown();
+				}
+				
 				//コストの再計算
 				method.cost_refresh();
 				//いらない経路の削除

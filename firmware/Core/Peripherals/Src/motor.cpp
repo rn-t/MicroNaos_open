@@ -159,7 +159,14 @@ void Motor::forward(float32_t length, uint8_t slow_down){
 	}else{
 		forward_speed = 270.0f;
 	}
-	state.delta_max = length * forward_gain;
+	
+	if(slow_down == 0){
+		const float32_t slow_down_gain = 0.98;
+		state.delta_max = length * slow_down_gain;
+	}else{
+		state.delta_max = length * forward_gain;
+	}
+	
 	state.mode = state.forward;
 	state.slow_down = slow_down;
 	HAL_Delay(2);

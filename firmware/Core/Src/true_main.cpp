@@ -47,9 +47,8 @@ namespace sw{
 static volatile float32_t gyro_z_e_i = 0.0f;
 
 static std::vector<std::vector<uint8_t>> start_coord = {{0, 0}};
-static std::vector<std::vector<uint8_t>> goal_coord = {{7, 7}, {7, 8}, {8, 7}, {8, 8}};
+static std::vector<std::vector<uint8_t>> goal_coord = {{1, 0}, {1, 1}, {2, 0}, {2, 1}};
 //static std::vector<std::vector<uint8_t>> goal_coord = {{7, 7}, {7, 8}, {8, 7}, {8, 8}};
-//static std::vector<std::vector<uint8_t>> goal_coord = {{6, 0}, {7, 0}, {6, 1}, {7, 1}};
 
 static Maze maze(start_coord, goal_coord);
 static Mouse mouse;
@@ -134,19 +133,30 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 				motor.state.delta = 0.0f;
 				motor.state.mode_lock = 1;
 
-				float32_t target_speed;
+				float32_t target_speed_l, target_speed_r;
 
 				//速度ターゲットを直進スピードに設定する。(符号も合わせる)
 				if(motor.state.delta_max > 0){
-					target_speed = motor.forward_speed;
+					target_speed_l = motor.forward_speed;
 				}else{	
-					target_speed = -1.0f * motor.forward_speed;	
+					target_speed_l = -1.0f * motor.forward_speed;	
+				}
+
+				target_speed_r = target_speed_l;
+
+				if(ir::side_left.intensity > 450){
+					float32_t diff = static_cast<float32_t>(ir::side_left.intensity - 350);
+					target_speed_l -= diff * 0.01f;
+				}else if(ir::side_right.intensity > 450){
+					float32_t diff = static_cast<float32_t>(ir::side_right.intensity - 350);
+					target_speed_r -= diff * 0.01f;
+
 				}
 				//拘束条件として右と左のスピードは同じになる。
-				motor.set_target(target_speed, target_speed);
+				motor.set_target(target_speed_l, target_speed_r);
 				motor.state.mode_previous = motor.state.forward;
 			}else{
-				motor.state.delta += motor.speedstate_l.current * motor.t_scale;
+				motor.state.delta += (motor.speedstate_l.current + motor.speedstate_r.current) / 2.0f * motor.t_scale;
 
 				if(motor.state.slow_down == 1){
 					//減速を行う場合(デフォルト)
@@ -401,10 +411,12 @@ void true_main(void){
 			maze.wall_update(mouse.x, mouse.y, temp_wall);
 		}
 
-
-		motor.forward(90.0f);
-		mouse.y = 1;
+		
 		gyro.z_angle = 0.0f;
+
+		motor.forward(90.0f, 0);
+		mouse.y = 1;
+		
 
 		uint8_t kabeate_count = 0;	
 
@@ -432,9 +444,11 @@ void true_main(void){
 				}
 
 				/*ジャイロでの補正*/
+				/*
 				float32_t gyro_turn_deg = -1 * (gyro.z_angle 
 					- static_cast<float32_t>(tools::direction_to_deg(mouse.direction)));
 				motor.turn(tools::deg_normalize(gyro_turn_deg));
+				*/
 
 				uint8_t rotated_wall = tools::get_rotated_wall(mouse.direction, temp_wall);
 				
@@ -525,17 +539,17 @@ void true_main(void){
 								motor.turn(90.0f);
 								motor.kabeate0();
 								motor.turn(-90.0f);
-								motor.forward(90.0f);
+								motor.forward(90.0f, 0);
 
 							}else if(ir::side_right.intensity > side_wall_near){
 								motor.forward(90.0f);
 								motor.turn(-90.0f);
 								motor.kabeate0();
 								motor.turn(90.0f);
-								motor.forward(90.0f);
+								motor.forward(90.0f, 0);
 
 							}else{
-								motor.forward(180.0f);
+								motor.forward(180.0f, 0);
 							}
 							break;
 
@@ -568,7 +582,7 @@ void true_main(void){
 
 							}
 							
-							motor.forward(90.0f);
+							motor.forward(90.0f, 0);
 							break;
 
 						case -90:
@@ -599,7 +613,7 @@ void true_main(void){
 								kabeate_count = 0;
 							}
 
-							motor.forward(90.0f);
+							motor.forward(90.0f, 0);
 							break;
 
 						case 180:
@@ -625,30 +639,30 @@ void true_main(void){
 								motor.turn(180.0f);
 							}
 
-							motor.forward(90.0f);
+							motor.forward(90.0f, 0);
 							break;
 					}
 				}else{
 					switch(turn_deg){
 						case 0:
-							motor.forward(180.0f);
+							motor.forward(180.0f, 0);
 							break;
 						case 90:
 							mouse.turn_inv90();
 							motor.forward(90.0f);
 							motor.turn(-90.0f);
-							motor.forward(90.0f);
+							motor.forward(90.0f, 0);
 							break;
 						case -90:
 							mouse.turn_90();
 							motor.forward(90.0f);
 							motor.turn(90.0f);
-							motor.forward(90.0f);
+							motor.forward(90.0f, 0);
 							break;
 						case 180:
 							mouse.turn_180();
 							motor.turn(180.0f);
-							motor.forward(90.0f);
+							motor.forward(90.0f, 0);
 							break;
 					}
 				}

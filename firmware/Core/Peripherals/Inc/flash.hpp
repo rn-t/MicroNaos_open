@@ -1,3 +1,8 @@
+#ifndef INC_FLASH_HPP_
+#define INC_FLASH_HPP_
+
+#include "main.h"
+
 extern char _flash_data_start;
 
 class Flash{
@@ -11,3 +16,5 @@ class Flash{
     void save(uint8_t (&wall_data)[16][16]);
     void load(void);
 };
+
+#endif

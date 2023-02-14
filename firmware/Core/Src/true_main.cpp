@@ -11,6 +11,7 @@
 #include "ir_sensor.hpp"
 #include "maze.hpp"
 #include "tools.hpp"
+#include "flash.hpp"
 
 #include "SEGGER_RTT.h"
 #include "arm_math.h"
@@ -53,6 +54,8 @@ static std::vector<std::vector<uint8_t>> goal_coord = {{7, 7}, {7, 8}, {8, 7}, {
 static Maze maze(start_coord, goal_coord);
 static Mouse mouse;
 static AdachiMethod method(&maze, &mouse);
+
+static Flash flash;
 
 static uint8_t usbmouse_enable = 0;
 
@@ -309,6 +312,14 @@ void true_main(void){
 	ir_led::set_state(1,1);
 	Ir_sensor::init();
 
+	flash.load();
+	if(flash.is_elased == 0){
+		for (int i = 0; i < 16; i++){
+        	for (int j = 0; j < 16; j++){
+				maze.wall[i][j] = flash.wall[i][j];
+            }
+        }
+    }
 
 	//割り込み用のTIMを起動
 	HAL_TIM_Base_Start_IT(&htim6);
@@ -318,6 +329,8 @@ void true_main(void){
 	uint16_t start_count = 0;
 	if(sw::r == 1){
 		led::set(0, 0, 1);
+
+		flash.erase();
 		
 		usbmouse.button = 0;
 		
@@ -398,10 +411,10 @@ void true_main(void){
 		/*---スタート時の処理終了。(0,1からスタート)---*/
 		//実際は(0,0.5)あたりにいる。
 
-		for(uint8_t step = 0; step < 5; step++){
-        	if(step == 0 || step == 4){
+		for(uint8_t step = 0; step < 4; step++){
+        	if(step == 0 || step == 3){
         	    method.set_goals(maze.goal);
-        	}else if (step == 3){
+        	}else if (step == 2){
             	method.set_goals(maze.start);
         	}
 
@@ -438,14 +451,21 @@ void true_main(void){
 							method.goals.push_back(g);
 						}
 					}
-					if(method.goals.empty()) break;
+					if(method.goals.empty()){
+						flash.save(maze.wall);
+						break;
+					}
+					
 
-				}else if(step == 2){
+				}
+				/*
+				else if(step == 2){
 					led::set(1, 0, 1);
 					method.set_goals(method.get_unknown_in_shortest());
 					if(method.goals.empty()) break;
 
 				}
+				*/
 
 				//コストの再計算
 				method.cost_refresh();
@@ -461,7 +481,7 @@ void true_main(void){
 
 				int16_t turn_deg = tools::deg_sub(mouse_deg, maze_deg);
 				
-				if(step == 3 && method.goal_check()){
+				if(step == 2 && method.goal_check()){
 					motor.forward(90.0f);
 					turn_deg = tools::deg_sub(mouse_deg, tools::direction_to_deg(Direction::up));
 					switch(turn_deg){
@@ -494,7 +514,7 @@ void true_main(void){
 					break;
 				}
 
-				if(step < 4){
+				if(step < 3){
 					
 					const uint16_t side_wall_near = 1200;
 					switch(turn_deg){

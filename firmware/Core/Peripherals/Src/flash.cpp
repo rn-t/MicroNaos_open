@@ -2,7 +2,7 @@
 #include "main.h"
 #include <string.h>
 
-void Flash::erase(void){
+void Flash::erase(){
     HAL_FLASH_Unlock();
 
     FLASH_EraseInitTypeDef eraseproperty;
@@ -38,7 +38,7 @@ void Flash::save(uint8_t (&wall_data)[16][16]){
     HAL_FLASH_Lock();
 }
 
-void Flash::load(void){
+void Flash::load(){
     
     memcpy(wall, _start_address, sizeof(wall));
     

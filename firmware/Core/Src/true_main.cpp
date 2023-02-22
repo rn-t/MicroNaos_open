@@ -1,4 +1,3 @@
-
 #include "main.h"
 #include "usb_device.h"
 #include "usbd_hid.h"
@@ -47,8 +46,8 @@ namespace sw{
 static volatile float32_t gyro_z_e_i = 0.0f;
 
 static std::vector<std::vector<uint8_t>> start_coord = {{0, 0}};
-static std::vector<std::vector<uint8_t>> goal_coord = {{1, 0}, {1, 1}, {2, 0}, {2, 1}};
-//static std::vector<std::vector<uint8_t>> goal_coord = {{7, 7}, {7, 8}, {8, 7}, {8, 8}};
+//static std::vector<std::vector<uint8_t>> goal_coord = {{1, 0}, {1, 1}, {2, 0}, {2, 1}};
+static std::vector<std::vector<uint8_t>> goal_coord = {{7, 7}, {7, 8}, {8, 7}, {8, 8}};
 
 static Maze maze(start_coord, goal_coord);
 static Mouse mouse;
@@ -144,19 +143,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
 				target_speed_r = target_speed_l;
 
-				if(ir::side_left.intensity > 450){
-					float32_t diff = static_cast<float32_t>(ir::side_left.intensity - 350);
-					target_speed_l -= diff * 0.01f;
-				}else if(ir::side_right.intensity > 450){
-					float32_t diff = static_cast<float32_t>(ir::side_right.intensity - 350);
-					target_speed_r -= diff * 0.01f;
-
-				}
+				
 				//拘束条件として右と左のスピードは同じになる。
 				motor.set_target(target_speed_l, target_speed_r);
 				motor.state.mode_previous = motor.state.forward;
 			}else{
 				motor.state.delta += (motor.speedstate_l.current + motor.speedstate_r.current) / 2.0f * motor.t_scale;
+				
+				
 
 				if(motor.state.slow_down == 1){
 					//減速を行う場合(デフォルト)
@@ -173,6 +167,25 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 						motor.state.mode_lock = 0;
 					}
 				}else{
+					float32_t target_speed_l, target_speed_r;
+
+					//速度ターゲットを直進スピードに設定する。(符号も合わせる)
+					if(motor.state.delta_max > 0){
+						target_speed_l = motor.forward_speed;
+					}else{	
+						target_speed_l = -1.0f * motor.forward_speed;	
+					}
+
+					target_speed_r = target_speed_l;
+					if(ir::side_left.intensity > 800){
+						float32_t diff = static_cast<float32_t>(ir::side_left.intensity - 800);
+						target_speed_r += diff * 0.1f;
+					}else if(ir::side_right.intensity > 800){
+						float32_t diff = static_cast<float32_t>(ir::side_right.intensity - 800);
+						target_speed_l += diff * 0.1f;
+
+					}
+					motor.set_target(target_speed_l, target_speed_r);
 					if(abs(motor.state.delta_max - motor.state.delta) < (motor.forward_speed * motor.t_scale)){
 						//形式的にstopにしておく(あまり直観的ではない)
 						motor.state.mode = motor.state.stop;
@@ -232,7 +245,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
 				motor.set_target_deg(temp_deg_speed);
 
-				if(abs(motor.speedstate_l.current) < (motor.accel * motor.t_scale)){
+				if(abs(motor.state.delta_deg) < 0.1f){
 					motor.set_target_deg(0.0f);
 					motor.state.mode = motor.state.stop;
 					motor.state.mode_previous = motor.state.stop;
@@ -322,20 +335,13 @@ void true_main(void){
 	ir_led::set_state(1,1);
 	Ir_sensor::init();
 
-	flash.load();
-	if(flash.is_elased == 0){
-		for (int i = 0; i < 16; i++){
-        	for (int j = 0; j < 16; j++){
-				maze.wall[i][j] = flash.wall[i][j];
-            }
-        }
-    }
 
 	//割り込み用のTIMを起動
 	HAL_TIM_Base_Start_IT(&htim6);
 	HAL_TIM_Base_Start_IT(&htim7);
 	HAL_TIM_Base_Start_IT(&htim11);
 
+	uint8_t mode = 0;
 	uint16_t start_count = 0;
 	if(sw::r == 1){
 		led::set(0, 0, 1);
@@ -359,6 +365,19 @@ void true_main(void){
 		
 		//前センサを適度に塞ぐと起動する
 		while (1){
+			if(sw::l == 1){
+				if(mode == 0){
+					mode = 1;
+					led::set(0, 1, 1);
+				}else if(mode == 1){
+					mode = 2;
+					led::set(1, 0, 1);
+				}else{
+					mode = 0;
+					led::set(0, 0, 0);
+				}
+				HAL_Delay(200);
+			}
 			if(ir::front_right.intensity > 1000){
 				start_count++;
 			}else{
@@ -377,10 +396,33 @@ void true_main(void){
 		
 		HAL_Delay(2000);
 		led::set(0, 0, 0);
+		if (mode == 0){
+			for (int i = 0; i < 16; i++){
+				for (int j = 0; j < 16; j++){
+					maze.wall[i][j] = 0;
+				}
+			}
+		}else{
+			flash.load();
+			if(flash.is_elased == 0){
+				for (int i = 0; i < 16; i++){
+					for (int j = 0; j < 16; j++){
+						maze.wall[i][j] = flash.wall[i][j];
+					}
+				}
+			}
+		}
 		
 		mouse.x = 0;
 		mouse.y = 0;
 		mouse.direction = Direction::up;
+
+		/*デバッグ向け直進処理*/
+		/*		
+		motor.forward(810, 0);
+		motor.forward(90, 1);
+		while(1){}
+		*/
 		
 		/*デバッグ向け回転処理*/
 		/*
@@ -417,18 +459,46 @@ void true_main(void){
 		motor.forward(90.0f, 0);
 		mouse.y = 1;
 		
-
-		uint8_t kabeate_count = 0;	
-
 		/*---スタート時の処理終了。(0,1からスタート)---*/
 		//実際は(0,0.5)あたりにいる。
 
 		for(uint8_t step = 0; step < 4; step++){
-        	if(step == 0 || step == 3){
+			if(mode != 0){
+				step = 3;
+			}
+        	if(step != 2){
         	    method.set_goals(maze.goal);
         	}else if (step == 2){
             	method.set_goals(maze.start);
         	}
+			switch(step){
+				case 1:
+					led::set(1, 1, 0);
+					break;
+				case 2:
+					led::set(1, 0, 1);
+					break;
+				case 3:
+					led::set(1, 0, 1);
+					break;
+			}
+			
+			if(step == 3){
+				//最短走行の時に速度を決定する。
+				switch(mode){
+					case 0:
+						motor.forward_scale = 1.25f;
+						break;
+					case 1:
+						motor.forward_scale = 1.0f;
+						break;
+					case 2:
+						motor.forward_scale = 1.25f;
+						break;
+				}
+			}else{
+				motor.forward_scale = 1.0f;
+			}
 
 			while(1){	
 			//迷路からの壁情報の読み込み
@@ -456,22 +526,7 @@ void true_main(void){
 				std::vector<uint8_t> now{mouse.x, mouse.y};
 				method.set_start(now);
 
-				if(step == 1){
-					led::set(1, 1, 0);
-					
-					method.goals.clear();
-					for(const auto& g : maze.goal){
-						if((maze.wall[g[0]][g[1]] & Maze::IS_SEARCHED) == 0){
-							method.goals.push_back(g);
-						}
-					}
-					if(method.goals.empty()){
-						flash.save(maze.wall);
-						break;
-					}
-					
 
-				}
 				/*
 				else if(step == 2){
 					led::set(1, 0, 1);
@@ -489,9 +544,27 @@ void true_main(void){
 				method.cost_refresh();
 				//いらない経路の削除
 				method.delete_bad_route();
+
+				if(step == 1){
+					motor.forward(180.0f);
+					mouse.move_forward();
+					flash.save(maze.wall);
+					led::set(0, 0, 1);
+					HAL_Delay(500);
+					break;
+				}
 				
 				if(step == 0 && method.goal_check()){
 					break;
+				}
+				if(step == 3 && method.goal_check()){
+					motor.forward(90.0f);
+					while(1){
+						led::set(1, 1, 1);
+						HAL_Delay(500);
+						led::set(0, 0, 0);
+						HAL_Delay(500);
+					}
 				}
 				
 				int16_t mouse_deg = tools::direction_to_deg(mouse.direction);
@@ -521,13 +594,17 @@ void true_main(void){
 
 					motor.kabeate1();
 					motor.kabeate2();
+					
+					flash.save(maze.wall);
+					led::set(0, 0, 1);
+					HAL_Delay(500);
 
-					led::set(1, 1, 1);
+					led::set(1, 0, 1);
 					HAL_Delay(2000);
 					
 					gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
 
-					motor.forward(90.0f);
+					motor.forward(90.0f, 0);
 					mouse.y = 1;
 					break;
 				}
@@ -535,6 +612,7 @@ void true_main(void){
 				if(step < 3){
 					
 					const uint16_t side_wall_near = 1200;
+					float32_t current_ideal_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
 					switch(turn_deg){
 						case 0:
 
@@ -553,7 +631,8 @@ void true_main(void){
 								motor.forward(90.0f, 0);
 
 							}else{
-								motor.forward(180.0f, 0);
+								const float32_t forward_gain = 0.98;
+								motor.forward(180.0f * forward_gain, 0);
 							}
 							break;
 
@@ -561,28 +640,26 @@ void true_main(void){
 							mouse.turn_inv90();
 							motor.forward(90.0f);
 
-							if(kabeate_count == 0 || temp_wall == 0){
+							if(abs(tools::deg_sub(gyro.z_angle, current_ideal_angle)) < 5.0f ){
+								//5°以上ずれている場合は壁当てする。
 								motor.turn(-90.0f);
-								kabeate_count++;
 							}else{
 								if(temp_wall == (Direction::left + Direction::up)){
 									motor.turn(180.0f);
 									motor.kabeate0();
 									motor.turn(90.0f);
 									motor.kabeate0();
-									gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
+									gyro.z_angle = current_ideal_angle;
 								}else if(temp_wall == (Direction::up)){
 									motor.turn(180.0f);
 									motor.kabeate0();
 									motor.turn(90.0f);
-									gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
+									gyro.z_angle = current_ideal_angle;
 								}else if(temp_wall == (Direction::left)){
 									motor.turn(-90.0f);
 									motor.kabeate0();
-									gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
+									gyro.z_angle = current_ideal_angle;
 								}
-
-								kabeate_count = 0;
 
 							}
 							
@@ -593,28 +670,26 @@ void true_main(void){
 							mouse.turn_90();
 							motor.forward(90.0f);
 
-							if(kabeate_count == 0 || temp_wall == 0){
+							if(abs(tools::deg_sub(gyro.z_angle, current_ideal_angle)) < 5.0f ){
+								//5°以上ずれている場合は壁当てする。
 								motor.turn(90.0f);
-								kabeate_count++;
 							}else{
 								if(temp_wall == (Direction::right + Direction::up)){
 									motor.turn(180.0f);
 									motor.kabeate0();
 									motor.turn(-90.0f);
 									motor.kabeate0();
-									gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
+									gyro.z_angle = current_ideal_angle;
 								}else if(temp_wall == (Direction::up)){
 									motor.turn(180.0f);
 									motor.kabeate0();
 									motor.turn(-90.0f);
-									gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
+									gyro.z_angle = current_ideal_angle;
 								}else if(temp_wall == (Direction::right)){
 									motor.turn(90.0f);
 									motor.kabeate0();
-									gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
+									gyro.z_angle = current_ideal_angle;
 								}
-
-								kabeate_count = 0;
 							}
 
 							motor.forward(90.0f, 0);

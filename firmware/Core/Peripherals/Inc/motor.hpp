@@ -62,6 +62,7 @@ class Motor{
         //タイヤの大きさを設定
     	const float32_t tire_width = 82.0f; //mm
     	//いわゆる速度パラメーターを設定
+        float32_t forward_scale = 1.0f;
 	    float32_t forward_speed = 270.0f; //(mm/s)
 	    float32_t turn_speed = 270.0f; //(deg/s)
 

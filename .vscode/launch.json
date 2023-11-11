@@ -9,7 +9,7 @@
         "armToolchainPath": "/opt/gcc-arm-none-eabi/bin",
         "servertype": "jlink",
         "serverpath": "JLinkGDBServer",
-        "ipAddress": "172.22.208.1",
+        "ipAddress": "172.30.48.1",
         "device": "STM32F405RG",
         "interface": "swd",
     }

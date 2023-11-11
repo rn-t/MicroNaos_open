@@ -46,8 +46,9 @@ namespace sw{
 static volatile float32_t gyro_z_e_i = 0.0f;
 
 static std::vector<std::vector<uint8_t>> start_coord = {{0, 0}};
-//static std::vector<std::vector<uint8_t>> goal_coord = {{1, 0}, {1, 1}, {2, 0}, {2, 1}};
+// static std::vector<std::vector<uint8_t>> goal_coord = {{1, 0}, {1, 1}, {2, 0}, {2, 1}};
 static std::vector<std::vector<uint8_t>> goal_coord = {{7, 7}, {7, 8}, {8, 7}, {8, 8}};
+// static std::vector<std::vector<uint8_t>> goal_coord = {{8, 3}};
 
 static Maze maze(start_coord, goal_coord);
 static Mouse mouse;
@@ -479,7 +480,7 @@ void true_main(void){
 					led::set(1, 0, 1);
 					break;
 				case 3:
-					led::set(1, 0, 1);
+					led::set(0, 1, 1);
 					break;
 			}
 			
@@ -546,12 +547,31 @@ void true_main(void){
 				method.delete_bad_route();
 
 				if(step == 1){
-					motor.forward(180.0f);
+					motor.forward(90.0f);
+					if((rotated_wall & Direction::up) != Direction::up){
+						//上に壁がない場合回転しない						
+
+					}else if((rotated_wall & Direction::left) != Direction::left){
+						//そのうえで左に壁がない場合左に進む
+						mouse.turn_inv90();
+						motor.turn(-90.0f);
+						
+					}else if((rotated_wall & Direction::right) != Direction::right){
+						//そのうえで右に壁がない場合右に進む
+						mouse.turn_90();
+						motor.turn(90.0f);
+					}else{
+						mouse.turn_180();
+						motor.kabeate_turn_r();
+						gyro.z_angle = static_cast<float32_t>(tools::direction_to_deg(mouse.direction));
+					}
+					motor.forward(90.0f);
 					mouse.move_forward();
 					flash.save(maze.wall);
 					led::set(0, 0, 1);
 					HAL_Delay(500);
 					break;
+					
 				}
 				
 				if(step == 0 && method.goal_check()){
